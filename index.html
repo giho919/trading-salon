@@ -185,6 +185,30 @@ body.shake { animation:shake .5s; }
 #vign { position:fixed; inset:0; pointer-events:none; z-index:89; opacity:0; transition:opacity .3s; }
 .foot { margin-top:26px; padding-top:12px; border-top:1px solid var(--line); font-size:10.5px; color:var(--dim); line-height:1.7; }
 .hidden { display:none; }
+
+/* ═══ 블라인드 차트 게임 ═══ */
+.bgWrap { display:grid; grid-template-columns:2.1fr 1fr; gap:14px; align-items:start; }
+#bgStat { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; padding:13px 15px; }
+#bgStat .r .l2 { font-size:10px; color:var(--dim); letter-spacing:1px; margin-bottom:2px; }
+#bgStat .r .v2 { font-size:16px; font-weight:700; }
+.gRow { display:flex; gap:6px; padding:0 15px 10px; }
+.gbtn { flex:1; text-align:center; padding:9px 0; font-size:11.5px; letter-spacing:1px; border:1px solid var(--line); border-radius:8px; cursor:pointer; color:#c6cad3; background:var(--panel2); user-select:none; }
+.gbtn:hover { border-color:var(--gold-dim); color:var(--gold); }
+.gbtn.buy { border-color:rgba(74,222,128,.35); color:var(--grn); }
+.gbtn.sell { border-color:rgba(248,113,113,.35); color:var(--red); }
+.gbtn.next { background:var(--gold-dim); border-color:var(--gold); color:#0c0e12; font-weight:800; }
+.gbtn.next:hover { color:#0c0e12; filter:brightness(1.15); }
+#bgLog { max-height:200px; overflow-y:auto; padding:8px 15px 12px; font-size:11px; }
+#bgLog .tr { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--line); }
+#bgOver { position:absolute; inset:0; z-index:6; background:rgba(10,12,16,.88); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; text-align:center; }
+#bgOver.hidden { display:none; }
+#bgOver .box { max-width:460px; padding:26px 30px; border:1px solid var(--gold-dim); border-radius:12px; background:var(--panel); }
+#bgOver h4 { font-family:Georgia,serif; color:var(--gold); font-size:17px; letter-spacing:2px; margin-bottom:12px; }
+#bgOver p { font-size:12.5px; line-height:1.9; color:#c6cad3; }
+#bgOver .big { font-size:30px; font-weight:800; margin:10px 0; }
+#bgOver .go { display:inline-block; margin-top:16px; padding:10px 34px; border:1px solid var(--gold); border-radius:8px; color:var(--gold); font-size:13px; letter-spacing:2px; cursor:pointer; }
+#bgOver .go:hover { background:var(--gold-dim); }
 </style>
 </head>
 <body>
@@ -194,6 +218,7 @@ body.shake { animation:shake .5s; }
   <div class="brand">TRADING SALON<small>CRYPTO LOUNGE · EST. 2026</small></div>
   <div class="tabs">
     <div class="tab on" data-tab="lounge">라운지</div>
+    <div class="tab" data-tab="game">🎰 블라인드</div>
     <div class="tab" data-tab="chars">전략가들</div>
   </div>
   <div style="display:flex;gap:14px;align-items:center">
@@ -315,6 +340,63 @@ body.shake { animation:shake .5s; }
 </div>
 </div>
 
+<!-- ═══════════ 블라인드 차트 탭 ═══════════ -->
+<div id="tab-game" class="hidden">
+<div class="bgWrap">
+  <div class="panel" style="position:relative">
+    <h3>🎰 블라인드 차트 <small>정체를 숨긴 과거의 실제 시장 — 살아남아 보시길</small></h3>
+    <div class="chd">
+      <span class="sym" id="bgSym">❓ ??? / USDT</span>
+      <span class="num" id="bgDay">—</span>
+      <span class="num" id="bgPx" style="margin-left:auto">—</span>
+    </div>
+    <div id="bgChart" style="height:480px"></div>
+    <div id="bgOver">
+      <div class="box" id="bgOverBox">
+        <h4>🎰 블라인드 차트</h4>
+        <p>과거의 어느 실제 코인 시장에 던져집니다. <b style="color:#fff">종목도, 날짜도 비밀.</b><br>
+        시작가는 100으로 환산되어 힌트가 없습니다.<br>
+        밑천 <b style="color:var(--gold)">$10,000</b> — 하루씩 넘기며 사고팔아 보세요.<br>
+        200일 뒤, 정체가 공개되고 당신의 성적이 판정됩니다.</p>
+        <div class="go" onclick="blindStart()">판에 앉는다 →</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="panel">
+      <h3>💼 내 판돈</h3>
+      <div id="bgStat">
+        <div class="r"><div class="l2">현금</div><div class="v2 num" id="bgCash">$10,000</div></div>
+        <div class="r"><div class="l2">보유 수량</div><div class="v2 num" id="bgCoin">0</div></div>
+        <div class="r"><div class="l2">총자산</div><div class="v2 num" id="bgTot">$10,000</div></div>
+        <div class="r"><div class="l2">수익률</div><div class="v2 num" id="bgRoi">+0.00%</div></div>
+      </div>
+      <div class="gRow">
+        <div class="gbtn buy" onclick="blindTrade('buy',.25)">매수 25%</div>
+        <div class="gbtn buy" onclick="blindTrade('buy',.5)">50%</div>
+        <div class="gbtn buy" onclick="blindTrade('buy',1)">몰빵</div>
+      </div>
+      <div class="gRow">
+        <div class="gbtn sell" onclick="blindTrade('sell',.25)">매도 25%</div>
+        <div class="gbtn sell" onclick="blindTrade('sell',.5)">50%</div>
+        <div class="gbtn sell" onclick="blindTrade('sell',1)">전량</div>
+      </div>
+      <div class="gRow">
+        <div class="gbtn next" onclick="blindNext(1)">다음 날 ▶</div>
+        <div class="gbtn next" onclick="blindNext(7)">7일 ▶▶</div>
+      </div>
+      <div class="gRow" style="padding-bottom:14px">
+        <div class="gbtn" onclick="blindFinish(true)">🏳 여기서 정산</div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>📒 거래 장부 <small id="bgBest">최고 기록 —</small></h3>
+      <div id="bgLog"><div style="padding:10px 0;color:var(--dim)">아직 거래가 없습니다</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- ═══════════ 전략가 탭 ═══════════ -->
 <div id="tab-chars" class="hidden">
 <div class="chars">
@@ -374,6 +456,8 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   t.classList.add('on');
   $('tab-lounge').classList.toggle('hidden', t.dataset.tab !== 'lounge');
   $('tab-chars').classList.toggle('hidden', t.dataset.tab !== 'chars');
+  $('tab-game').classList.toggle('hidden', t.dataset.tab !== 'game');
+  if (t.dataset.tab === 'game') blindOpen();
 });
 
 let usd = 0, krw = 0, usdtKrw = 1380, kimchi = null;
@@ -975,6 +1059,141 @@ function runDemo() {
 if (location.search.includes('demo') || location.hash.includes('demo')) runDemo();
 
 betRender();  // 초기 렌더 (모든 정의 이후에 호출해야 함 — TDZ)
+
+// ═══ 🎰 블라인드 차트 게임 ═══
+const BG_POOL = ['BTCUSDT','ETHUSDT','BNBUSDT','XRPUSDT','ADAUSDT','SOLUSDT','DOGEUSDT','DOTUSDT','LTCUSDT','LINKUSDT','AVAXUSDT','TRXUSDT','XLMUSDT','ATOMUSDT','UNIUSDT','ETCUSDT','FILUSDT','NEARUSDT','SANDUSDT','MANAUSDT','AAVEUSDT','ALGOUSDT','VETUSDT','EOSUSDT','XTZUSDT','CHZUSDT'];
+const BG_HIST = 260, BG_PLAY = 200, BG_TOTAL = BG_HIST + BG_PLAY;
+let bgCh = null, bgS = null, bg = null;
+
+function blindOpen() {
+  if (!bgCh) {
+    requestAnimationFrame(() => {
+      const el = $('bgChart');
+      bgCh = LightweightCharts.createChart(el, {
+        layout: { background: { color: '#12151c' }, textColor: '#6b7280', fontSize: 10 },
+        grid: { vertLines: { color: '#1a1f2b' }, horzLines: { color: '#1a1f2b' } },
+        crosshair: { mode: 0 },
+        rightPriceScale: { borderColor: '#232838' },
+        timeScale: { visible: false },   // 날짜 은닉
+        handleScroll: false, handleScale: false,
+      });
+      bgS = bgCh.addCandlestickSeries({
+        upColor: '#4ade80', downColor: '#f87171', borderVisible: false,
+        wickUpColor: '#4ade80', wickDownColor: '#f87171',
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+      });
+      bgCh.resize(el.clientWidth, el.clientHeight || 480);
+    });
+  }
+  const best = localStorage.getItem('salonBlindBest');
+  if (best !== null) $('bgBest').textContent = `최고 기록 ${(+best >= 0 ? '+' : '')}${(+best).toFixed(1)}%`;
+}
+
+async function blindStart() {
+  $('bgOverBox').innerHTML = '<h4>🎰 블라인드 차트</h4><p>과거의 판을 뒤지는 중…</p>';
+  for (let t = 0; t < 8; t++) {
+    const sym = BG_POOL[Math.floor(Math.random() * BG_POOL.length)];
+    const minEnd = Date.parse('2021-06-01'), maxEnd = Date.now() - 10 * 86400e3;
+    const endTime = minEnd + Math.floor(Math.random() * (maxEnd - minEnd));
+    try {
+      const kl = await (await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=1d&limit=${BG_TOTAL}&endTime=${endTime}`)).json();
+      if (!Array.isArray(kl) || kl.length !== BG_TOTAL) continue;
+      const base = +kl[0][4];
+      bg = {
+        sym,
+        realStart: new Date(kl[0][0]).toISOString().slice(0, 10),
+        realEnd: new Date(kl[BG_TOTAL - 1][0]).toISOString().slice(0, 10),
+        norm: kl.map((k, i) => ({ time: 946684800 + i * 86400, open: +k[1]/base*100, high: +k[2]/base*100, low: +k[3]/base*100, close: +k[4]/base*100 })),
+        idx: BG_HIST - 1, cash: 10000, coin: 0, trades: [], markers: [], over: false,
+      };
+      bgS.setData(bg.norm.slice(0, bg.idx + 1));
+      bgS.setMarkers([]);
+      bgCh.timeScale().fitContent();
+      $('bgOver').classList.add('hidden');
+      $('bgSym').textContent = '❓ ??? / USDT';
+      $('bgLog').innerHTML = '<div style="padding:10px 0;color:var(--dim)">아직 거래가 없습니다</div>';
+      blindStatus();
+      return;
+    } catch (e) { /* 다른 종목 재시도 */ }
+  }
+  $('bgOverBox').innerHTML = '<h4>🎰 블라인드 차트</h4><p>판을 차리지 못했습니다. 잠시 후 다시 시도해 주세요.</p><div class="go" onclick="blindStart()">재시도</div>';
+}
+
+function bgPrice() { return bg.norm[bg.idx].close; }
+function bgTotal() { return bg.cash + bg.coin * bgPrice(); }
+
+function blindStatus() {
+  const day = bg.idx - (BG_HIST - 1);
+  $('bgDay').textContent = `D+${day} / ${BG_PLAY}`;
+  $('bgPx').textContent = bgPrice().toFixed(2);
+  $('bgCash').textContent = '$' + fmt(bg.cash);
+  $('bgCoin').textContent = bg.coin.toFixed(4);
+  $('bgTot').textContent = '$' + fmt(bgTotal());
+  const roi = (bgTotal() / 10000 - 1) * 100;
+  const el = $('bgRoi');
+  el.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
+  el.style.color = roi > 0 ? 'var(--grn)' : roi < 0 ? 'var(--red)' : '#c6cad3';
+}
+
+function blindTrade(action, pct) {
+  if (!bg || bg.over) return;
+  const px = bgPrice(), day = bg.idx - (BG_HIST - 1);
+  if (action === 'buy') {
+    const spend = bg.cash * pct;
+    if (spend < 1) return;
+    bg.coin += spend / px; bg.cash -= spend;
+    bg.trades.unshift({ day, side: 'BUY', px, amt: spend });
+    bg.markers.push({ time: bg.norm[bg.idx].time, position: 'belowBar', color: '#4ade80', shape: 'arrowUp', text: 'B' });
+  } else {
+    const qty = bg.coin * pct;
+    if (qty * px < 1) return;
+    bg.cash += qty * px; bg.coin -= qty;
+    bg.trades.unshift({ day, side: 'SELL', px, amt: qty * px });
+    bg.markers.push({ time: bg.norm[bg.idx].time, position: 'aboveBar', color: '#f87171', shape: 'arrowDown', text: 'S' });
+  }
+  bgS.setMarkers(bg.markers);
+  $('bgLog').innerHTML = bg.trades.slice(0, 30).map(t =>
+    `<div class="tr"><span>D+${t.day} <b style="color:${t.side==='BUY'?'var(--grn)':'var(--red)'}">${t.side}</b></span><span class="num">@${t.px.toFixed(2)} · $${fmt(t.amt)}</span></div>`).join('');
+  blindStatus();
+}
+
+function blindNext(n) {
+  if (!bg || bg.over) return;
+  for (let i = 0; i < n && bg.idx < BG_TOTAL - 1; i++) {
+    bg.idx++;
+    bgS.update(bg.norm[bg.idx]);
+  }
+  bgCh.timeScale().scrollToRealTime();
+  blindStatus();
+  if (bg.idx >= BG_TOTAL - 1) blindFinish(false);
+}
+
+function blindFinish(early) {
+  if (!bg || bg.over) return;
+  bg.over = true;
+  const roi = (bgTotal() / 10000 - 1) * 100;
+  const bh = (bg.norm[bg.idx].close / bg.norm[BG_HIST - 1].close - 1) * 100;  // 같은 기간 존버
+  const name = bg.sym.replace('USDT', '');
+  $('bgSym').textContent = `${name} / USDT`;
+  const prevBest = localStorage.getItem('salonBlindBest');
+  const isBest = prevBest === null || roi > +prevBest;
+  if (isBest) { localStorage.setItem('salonBlindBest', roi.toFixed(2)); $('bgBest').textContent = `최고 기록 ${(roi>=0?'+':'')}${roi.toFixed(1)}%`; }
+  const beat = roi >= bh;
+  const verdicts = beat
+    ? ['존버를 이겼습니다. 판을 읽을 줄 아는 손이군요.', '시장을 앞섰습니다 — 정마담이 눈여겨볼 솜씨.', '차트만 보고 이 정도면, 대단한 감입니다.']
+    : ['이번엔 존버가 이겼네요. 다음 판이 있습니다.', '시장이 한 수 위였습니다. 판은 늘 다시 열립니다.', '가만히 있는 것도 실력이라는 걸 시장이 알려주는군요.'];
+  $('bgOverBox').innerHTML = `
+    <h4>${early ? '🏳 중간 정산' : '🎰 정체 공개'}</h4>
+    <p>이 판의 정체는 <b style="color:var(--gold);font-size:16px">${name}</b><br>
+    <span style="color:var(--dim)">${bg.realStart} ~ ${bg.realEnd} 실제 시세</span></p>
+    <div class="big num" style="color:${roi>0?'var(--grn)':roi<0?'var(--red)':'#c6cad3'}">${roi>=0?'+':''}${roi.toFixed(2)}%</div>
+    <p>같은 기간 존버: <b class="num" style="color:${bh>0?'var(--grn)':'var(--red)'}">${bh>=0?'+':''}${bh.toFixed(2)}%</b>
+    ${isBest ? ' · <b style="color:var(--gold)">🏆 신기록!</b>' : ''}<br>${verdicts[Math.floor(Math.random()*verdicts.length)]}</p>
+    <div class="go" onclick="blindStart()">한 판 더 🎲</div>`;
+  $('bgOver').classList.remove('hidden');
+}
+window.blindOpen = blindOpen; window.blindStart = blindStart;
+window.blindTrade = blindTrade; window.blindNext = blindNext; window.blindFinish = blindFinish;
 
 // 선물 청산
 const wsl = new WebSocket('wss://fstream.binance.com/stream?streams=!forceOrder@arr/btcdomusdt@kline_1m');
