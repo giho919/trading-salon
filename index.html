@@ -652,23 +652,36 @@ let dayOpen = null, ethOpen = null;
 (async () => {
   try { await seedKlines('https://fapi.binance.com/fapi/v1/klines?symbol=BTCDOMUSDT&interval=1m&limit=300', cDOM); } catch(e) {}
 })();
-// 나스닥 선물 (야후 → CORS 프록시, 30초 폴링)
+// 나스닥 선물 (야후 → CORS 프록시 폴백 체인, 30초 폴링)
+const NQ_PROXIES = [
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+];
+let nqProxyIdx = 0;
 async function pollNQ() {
-  try {
-    const y = encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?interval=1m&range=1d');
-    const r = await (await fetch('https://corsproxy.io/?url=' + y)).json();
-    const res = r.chart.result[0], q = res.indicators.quote[0];
-    const data = res.timestamp.map((t, i) => ({ time: t, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] }))
-      .filter(x => x.open != null);
-    cNAS.s.setData(data);
-    const last = data[data.length-1];
-    $('nqPx').textContent = fmt(last.close, 1);
-    const prev = res.meta.chartPreviousClose;
-    if (prev) {
-      const chg = (last.close/prev - 1) * 100;
-      $('nqNote').innerHTML = `<span class="num ${chg>=0?'up':'dn'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`;
-    }
-  } catch(e) { $('nqNote').textContent = '연결 실패 — 재시도 중'; }
+  const y = 'https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?interval=1m&range=1d';
+  for (let a = 0; a < NQ_PROXIES.length; a++) {
+    const i = (nqProxyIdx + a) % NQ_PROXIES.length;
+    try {
+      const r = await (await fetch(NQ_PROXIES[i](y))).json();
+      const res = r.chart.result[0], q = res.indicators.quote[0];
+      const data = res.timestamp.map((t, j) => ({ time: t, open: q.open[j], high: q.high[j], low: q.low[j], close: q.close[j] }))
+        .filter(x => x.open != null);
+      if (!data.length) throw new Error('empty');
+      nqProxyIdx = i;   // 성공한 프록시 기억
+      cNAS.s.setData(data);
+      const last = data[data.length-1];
+      $('nqPx').textContent = fmt(last.close, 1);
+      const prev = res.meta.chartPreviousClose;
+      if (prev) {
+        const chg = (last.close/prev - 1) * 100;
+        $('nqNote').innerHTML = `<span class="num ${chg>=0?'up':'dn'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span>`;
+      }
+      return;
+    } catch(e) { /* 다음 프록시 */ }
+  }
+  $('nqNote').textContent = '연결 실패 — 재시도 중';
 }
 pollNQ(); setInterval(pollNQ, 30000);
 
