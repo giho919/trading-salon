@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Trading Salon — 라운지</title>
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root {
   --bg:#0a0c10; --panel:#12151c; --panel2:#161a23; --line:#232838;
@@ -57,6 +58,11 @@ canvas { display:block; }
 @keyframes fadein { from { opacity:0; transform:translateY(6px); } }
 .msg .who { font-weight:700; margin-right:6px; }
 .msg .ava { width:18px; height:18px; border-radius:50%; vertical-align:-4px; margin-right:5px; border:1px solid var(--gold-dim); }
+#chatIn { display:flex; gap:8px; padding:10px 14px; border-top:1px solid var(--line); }
+#chatIn input { flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:9px 12px; color:#e5e7eb; font-size:12.5px; outline:none; }
+#chatIn input:focus { border-color:var(--gold-dim); }
+#chatIn button { background:var(--gold-dim); border:1px solid var(--gold); border-radius:8px; color:#fff; font-size:11.5px; letter-spacing:1px; padding:0 16px; cursor:pointer; }
+#chatIn button:hover { filter:brightness(1.2); }
 .msg.sys { color:var(--dim); font-size:11.5px; }
 .msg.madam .who { color:#e8a0bf; } .msg.andy .who { color:var(--cyan); } .msg.justin .who { color:#a78bfa; }
 .chatlock { border-top:1px solid var(--line); padding:10px 14px; font-size:11.5px; color:var(--dim); background:var(--panel2); }
@@ -348,7 +354,10 @@ body.shake { animation:shake .5s; }
   <div class="panel" id="chatPanel">
     <h3>🥂 라운지 채팅 <small>살롱 피드</small></h3>
     <div id="feed"></div>
-    <div class="chatlock">💬 라이브 채팅은 곧 열립니다 — 지금은 살롱 식구들의 서신과 시장 소식이 흐르는 중.</div>
+    <div id="chatIn">
+      <input id="chatTxt" maxlength="200" placeholder="한마디 남기기…" onkeydown="if(event.key==='Enter')chatSend()">
+      <button onclick="chatSend()">전송</button>
+    </div>
   </div>
   <div class="panel">
     <h3>🎯 다음 캔들 예측 <small><b style="color:var(--gold)">BTC 1분봉</b> 고정 · 지금 거는 베팅은 다음 봉 판정</small></h3>
@@ -368,7 +377,7 @@ body.shake { animation:shake .5s; }
   <div class="panel">
     <h3>🏆 리더보드 <small>최고 연승 · 주간</small></h3>
     <div id="board"></div>
-    <div class="hint" style="padding:0 16px 12px;font-size:10px;color:var(--dim)">※ 데모 순위 — 정식 오픈 시 실제 이용자 순위로 전환됩니다</div>
+    <div class="hint" style="padding:0 16px 12px;font-size:10px;color:var(--dim)">※ 닉네임 기반 자율 순위 · 내 줄을 눌러 닉네임 설정</div>
   </div>
   </div>
 </div>
@@ -955,6 +964,7 @@ function judgePrediction(up, changePct) {
     }
     res.classList.add('pop');
     localStorage.setItem('salonBet', JSON.stringify(bet));
+    pushScore();   // 리더보드 반영 (닉네임 설정된 경우)
   }
   armed = pick;   // 접수분을 새로 열리는 봉에 잠금
   pick = null;
@@ -972,9 +982,17 @@ const DEMO_BOARD = [
   { nk: '분봉장인', bs: 4, w: 55, l: 49 },
 ];
 let myNick = localStorage.getItem('salonNick') || '나 (닉네임 설정)';
+let boardCache = null;   // Supabase 실순위 (없으면 데모)
 function renderBoard() {
-  const rows = [...DEMO_BOARD, { nk: myNick, bs: bet.best, w: bet.w, l: bet.l, me: true }]
-    .sort((a,b) => b.bs - a.bs || (b.w-b.l) - (a.w-a.l));
+  let rows;
+  if (boardCache && boardCache.length) {
+    rows = boardCache.map(r => ({ nk: esc(r.nick), bs: r.streak_best, w: r.w || 0, l: r.l || 0, me: r.nick === myNick }));
+    if (!rows.some(r => r.me)) rows.push({ nk: esc(myNick), bs: bet.best, w: bet.w, l: bet.l, me: true });
+    else Object.assign(rows.find(r => r.me), { bs: Math.max(rows.find(r => r.me).bs, bet.best), w: bet.w, l: bet.l });
+  } else {
+    rows = [...DEMO_BOARD, { nk: esc(myNick), bs: bet.best, w: bet.w, l: bet.l, me: true }];
+  }
+  rows.sort((a,b) => b.bs - a.bs || (b.w-b.l) - (a.w-a.l));
   $('board').innerHTML = rows.slice(0, 8).map((r, i) =>
     `<div class="brow${r.me ? ' me' : ''}">
        <span class="rk${i < 3 ? ' top' : ''}">${['🥇','🥈','🥉'][i] || i+1}</span>
@@ -989,9 +1007,67 @@ function setNick() {
     myNick = n.trim().slice(0, 10);
     localStorage.setItem('salonNick', myNick);
     renderBoard();
+    pushScore(); loadBoard();
   }
 }
 window.setNick = setNick;
+
+// ═══ Supabase — 라이브 채팅 · 리더보드 ═══
+const SUPA_URL = 'https://mmvhyzajmfkilldxxazs.supabase.co';
+const SUPA_KEY = 'sb_publishable_S5ohCvizmH8zI-H1wvRupA_aHTG4YOH';
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let sbc = null;
+try { sbc = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.log('supabase off', e); }
+
+function nickColor(n) {
+  let h = 0; for (const c of n) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `hsl(${h} 60% 72%)`;
+}
+function sayUser(nick, body) {
+  const m = document.createElement('div');
+  m.className = 'msg user';
+  m.innerHTML = `<span class="who" style="color:${nickColor(nick)}">${esc(nick)}</span><span class="body">${esc(body)}</span>`;
+  feed.appendChild(m);
+  while (feed.children.length > 60) feed.removeChild(feed.firstChild);
+  feed.scrollTop = feed.scrollHeight;
+}
+let _lastChat = 0;
+async function chatSend() {
+  if (!sbc) return;
+  const inp = $('chatTxt'), body = inp.value.trim();
+  if (!body) return;
+  if (myNick.startsWith('나 ')) { setNick(); if (myNick.startsWith('나 ')) return; }
+  if (Date.now() - _lastChat < 3000) return;   // 도배 쿨다운 3초
+  _lastChat = Date.now();
+  inp.value = '';
+  const { error } = await sbc.from('salon_chat').insert({ nick: myNick, body });
+  if (error) console.log('chat err', error.message);
+}
+window.chatSend = chatSend;
+
+async function pushScore() {
+  if (!sbc || myNick.startsWith('나 ')) return;
+  const blind = parseFloat(localStorage.getItem('salonBlindBest'));
+  await sbc.from('salon_board').upsert({
+    nick: myNick, streak_best: bet.best, w: bet.w, l: bet.l,
+    blind_best: isNaN(blind) ? null : blind, updated_at: new Date().toISOString(),
+  });
+}
+async function loadBoard() {
+  if (!sbc) return;
+  const { data } = await sbc.from('salon_board').select('*').order('streak_best', { ascending: false }).limit(20);
+  if (data && data.length) { boardCache = data; renderBoard(); }
+}
+(async () => {
+  if (!sbc) return;
+  const { data } = await sbc.from('salon_chat').select('*').order('id', { ascending: false }).limit(30);
+  if (data) data.reverse().forEach(m => sayUser(m.nick, m.body));
+  sbc.channel('salon-chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'salon_chat' },
+        p => sayUser(p.new.nick, p.new.body))
+    .subscribe();
+  loadBoard(); setInterval(loadBoard, 60000);
+})();
 
 // ═══ 칩 스택 ═══
 const chipZone = $('chipZone');
@@ -1389,7 +1465,7 @@ function blindFinish(early) {
   $('bgSym').textContent = `${name} / USDT`;
   const prevBest = localStorage.getItem('salonBlindBest');
   const isBest = prevBest === null || roi > +prevBest;
-  if (isBest) { localStorage.setItem('salonBlindBest', roi.toFixed(2)); $('bgBest').textContent = `최고 기록 ${(roi>=0?'+':'')}${roi.toFixed(1)}%`; }
+  if (isBest) { localStorage.setItem('salonBlindBest', roi.toFixed(2)); $('bgBest').textContent = `최고 기록 ${(roi>=0?'+':'')}${roi.toFixed(1)}%`; pushScore(); }
   const beat = roi >= bh;
   const verdicts = beat
     ? ['존버를 이겼습니다. 판을 읽을 줄 아는 손이군요.', '시장을 앞섰습니다 — 정마담이 눈여겨볼 솜씨.', '차트만 보고 이 정도면, 대단한 감입니다.']
