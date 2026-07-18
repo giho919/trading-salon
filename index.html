@@ -83,6 +83,8 @@ canvas { display:block; }
 .char .de:last-child { border-bottom:none; }
 .char .de .dt { flex:0 0 44px; color:var(--dim); font-size:10px; padding-top:2px; }
 .char .verdict { display:inline-block; margin-top:10px; font-size:11px; letter-spacing:1px; color:var(--gold); border:1px solid var(--gold-dim); border-radius:6px; padding:5px 12px; background:var(--bg); }
+.char .rptBtn { display:block; margin-top:12px; text-align:center; padding:9px 0; font-size:11.5px; letter-spacing:1.5px; color:var(--gold); border:1px solid var(--gold-dim); border-radius:8px; text-decoration:none; background:var(--bg); }
+.char .rptBtn:hover { background:var(--gold-dim); color:#fff; }
 
 #deck { display:flex; gap:8px; padding:14px; overflow:hidden; align-items:flex-end; justify-content:flex-end; height:150px; }
 .card { width:76px; min-width:76px; height:118px; border-radius:9px; position:relative; flex-shrink:0;
@@ -446,16 +448,17 @@ body.shake { animation:shake .5s; }
     <div class="radarWrap"><canvas id="rd_madam" width="190" height="140"></canvas></div>
     <div class="diary">
       <h4>매매 일지</h4>
-      <div class="de"><span class="dt">7/14</span><span>새벽 1시, 추세가 꺾이자마자 대장 정리 — <b style="color:var(--grn)">+1.5%</b>, 12일 장사. 2초 뒤 금괴 입고. 손이 빠른 게 아니라 시스템이 빠른 거야.</span></div>
-      <div class="de"><span class="dt">7/2</span><span>대장 61,582에 진입. 국면이 열렸고, 추세가 손짓했으니까.</span></div>
+      <div class="de"><span class="dt">7/14</span><span>새벽 1시, 추세가 꺾이자마자 대장 정리 — 12일 장사, 이문 챙기고 나왔다. 2초 뒤 금괴 입고. 손이 빠른 게 아니라 시스템이 빠른 거야.</span></div>
+      <div class="de"><span class="dt">7/2</span><span>대장 판에 들어섰다. 국면이 열렸고, 추세가 손짓했으니까.</span></div>
       <div class="de"><span class="dt">평소</span><span>판이 험할 땐 아무것도 안 한다. 그것도 매매다.</span></div>
     </div>
     <div class="letters">
       <h4>최근 서신</h4>
       <div class="letter"><div class="lt">오늘 09:05 · 아침 서신</div>비트는 잠시 내려놓고 금괴로 갈아탄 상태야. 판이 험할 땐 금이 이불이지.
-잔고 436불, 누적 +2.0%. 추세 돌아서면 바로 움직인다.</div>
-      <div class="letter"><div class="lt">어제 01:00 · 급전</div>판 정리했어. 대장 61,582 → 62,504, +1.5% 먹고 나왔다 (12일 장사). 금괴로 갈아탄다.</div>
+추세 돌아서면 바로 움직인다.</div>
+      <div class="letter"><div class="lt">어제 01:00 · 급전</div>판 정리했어. 12일 들고 있던 대장, 이문 남기고 나왔다. 금괴로 갈아탄다.</div>
     </div>
+    <a class="rptBtn" href="reports/madam_daily.html" target="_blank">📔 오늘의 장부 열람 →</a>
   </div>
   <div class="char">
     <div class="avatar"><img src="avatars/andy.png" alt="Andy"></div>
@@ -480,6 +483,7 @@ body.shake { animation:shake .5s; }
       <div class="letter"><div class="lt">어제 20:00 · 스캔 전보</div>전장 136곳 훑었고 27놈이 걸렸다. TRX 전적이 물건이야 (10전 8승).
 바닥 반전조 17개 — 떨어지는 칼 잡는 건 네 몫이다.</div>
     </div>
+    <a class="rptBtn" href="reports/andy_scan.html" target="_blank">📡 오늘의 스캔 전보 열람 →</a>
   </div>
   <div class="char">
     <div class="avatar"><img src="avatars/prof.png" alt="Prof. Justin"></div>
