@@ -807,7 +807,7 @@ function reseedDeck() {
   kl.slice(-31, -15).forEach(k => { deckBody.push(Math.abs(+k[4]-+k[1])/+k[1]*100); deckVol.push(+k[5]); });
   kl.slice(-15, -1).forEach(k => {
     const [ab, av] = deckStats();
-    dealCard(+k[1], +k[2], +k[3], +k[4], +k[5], k[0], ab, av);
+    dealCard(+k[1], +k[2], +k[3], +k[4], +k[5], k[0], ab, av, true);   // silent 리시드
     deck.lastChild.classList.remove('deal');
     deck.lastChild.classList.add('flipped');
     deckBody.push(Math.abs(+k[4]-+k[1])/+k[1]*100);
@@ -1178,7 +1178,7 @@ function trimDeck() {
   while (deck.children.length > fit) deck.removeChild(deck.firstChild);
 }
 window.addEventListener('resize', trimDeck);
-function dealCard(o, h, l, c, vol, timeMs, avgBody, avgVol) {
+function dealCard(o, h, l, c, vol, timeMs, avgBody, avgVol, silent) {
   const up = c >= o;
   const bodyPct = Math.abs(c-o)/o*100;
   const ratio = avgBody > 0 ? bodyPct/avgBody : 1;
@@ -1209,6 +1209,8 @@ function dealCard(o, h, l, c, vol, timeMs, avgBody, avgVol) {
   // ? 카드(다음 봉 자리) 앞에 끼워넣기 — ?는 항상 맨 오른쪽
   deck.insertBefore(el, nextCardEl && nextCardEl.parentElement === deck ? nextCardEl : null);
   trimDeck();
+  // 리시드(과거 카드 재생성)는 조용히 — 알림·연출·플립 애니메이션 없음
+  if (silent) return;
   // 뒷면 딜 → 플립 공개 (에픽은 예고 진동 후)
   if (tier === 'epic') {
     el.classList.add('pre-epic');
