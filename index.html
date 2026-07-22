@@ -280,6 +280,26 @@ body.shake { animation:shake .5s; }
 .pulseLbl { text-align:center; font-size:10.5px; color:var(--dim); padding-bottom:12px; letter-spacing:.5px; }
 #towSpark { width:100%; padding:6px 10px 12px; }
 @media (max-width:720px){ .arenaBottom { grid-template-columns:1fr; } #tow { grid-template-columns:80px 1fr 80px; } .towEmoji{font-size:38px} }
+
+/* ═══ 호가창 (order book) ═══ */
+.flowRow { display:flex; gap:14px; align-items:stretch; }
+.flowRow #rainWrap { flex:1; min-width:0; }
+#bookPanel { flex:0 0 234px; position:relative; }
+.bookSide { display:flex; flex-direction:column; }
+#bookAsks { justify-content:flex-end; }
+.bookRow { position:relative; display:flex; justify-content:space-between; align-items:center; height:16px; padding:0 11px; font-size:10.5px; }
+.bookRow .bar { position:absolute; top:1px; bottom:1px; right:0; opacity:.20; border-radius:2px 0 0 2px; transition:width .1s linear; }
+.bookRow.ask .bar { background:var(--red); } .bookRow.bid .bar { background:var(--grn); }
+.bookRow .px { position:relative; z-index:1; letter-spacing:.3px; } .bookRow.ask .px { color:#f6a5a5; } .bookRow.bid .px { color:#a3e8bf; }
+.bookRow .sz { position:relative; z-index:1; color:var(--dim); font-size:10px; }
+#bookMid { display:flex; justify-content:space-between; align-items:center; padding:6px 11px; margin:3px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+#bookMidPx { font-size:14px; font-weight:800; color:#fff; }
+#bookSpread { font-size:9.5px; color:var(--dim); letter-spacing:.5px; }
+.bookRow.break { animation:bookBreak .5s; }
+@keyframes bookBreak { 0%{background:rgba(255,255,255,.55)} 25%{background:rgba(255,255,255,.18)} 100%{background:transparent} }
+.bookRow.break .bar { animation:barPunch .5s; }
+@keyframes barPunch { 0%{filter:brightness(2.4)} 100%{filter:brightness(1)} }
+.shard { position:absolute; width:4px; height:4px; border-radius:1px; pointer-events:none; z-index:6; }
 </style>
 </head>
 <body>
@@ -365,6 +385,13 @@ body.shake { animation:shake .5s; }
       <div id="deck"></div>
     </div>
 
+    <div class="flowRow">
+    <div class="panel" id="bookPanel">
+      <h3>📊 호가창 <small>매도벽·매수벽 · 체결이 벽을 부순다</small></h3>
+      <div id="bookAsks" class="bookSide"></div>
+      <div id="bookMid"><span id="bookMidPx" class="num">—</span><span id="bookSpread" class="num"></span></div>
+      <div id="bookBids" class="bookSide"></div>
+    </div>
     <div class="panel" id="rainWrap">
       <h3>🌧 체결의 비 <small>실시간 전체 체결 · 왼쪽 매도 / 오른쪽 매수</small></h3>
       <div id="rainLegend">
@@ -389,6 +416,7 @@ body.shake { animation:shake .5s; }
       <canvas id="rain" height="330"></canvas>
       <span class="rainlbl" style="left:14px">◀ SELL</span>
       <span class="rainlbl" style="right:14px">BUY ▶</span>
+    </div>
     </div>
 
   </div>
@@ -1419,7 +1447,73 @@ function checkBreakout(px) {
 }
 
 // ═══ 바이낸스 웹소켓 ═══
-const ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@aggTrade/btcusdt@kline_1m');
+// ═══ 호가창 (order book) — 매도벽·매수벽 + 체결 시 붕괴 ═══
+const BOOK_ROWS = 8;
+let bookAsks = [], bookBids = [];
+const bookAskEl = $('bookAsks'), bookBidEl = $('bookBids');
+(function buildBook() {
+  for (const [el, side] of [[bookAskEl, 'ask'], [bookBidEl, 'bid']]) {
+    for (let i = 0; i < BOOK_ROWS; i++) {
+      const r = document.createElement('div'); r.className = 'bookRow ' + side;
+      r.innerHTML = '<div class="bar"></div><span class="px"></span><span class="sz"></span>';
+      el.appendChild(r);
+    }
+  }
+})();
+function renderBook() {
+  if (!bookAsks.length || !bookBids.length) return;
+  const asks = bookAsks.slice(0, BOOK_ROWS), bids = bookBids.slice(0, BOOK_ROWS);
+  const maxSz = Math.max(...asks.map(a => +a[1]), ...bids.map(b => +b[1]), 1e-9);
+  const ar = bookAskEl.children;
+  for (let i = 0; i < BOOK_ROWS; i++) {
+    const a = asks[BOOK_ROWS - 1 - i], row = ar[i];   // 위=먼(높은)가격, 아래=mid에 가까운 최저가
+    if (!a) { row.style.visibility = 'hidden'; continue; }
+    row.style.visibility = ''; row.querySelector('.px').textContent = (+a[0]).toFixed(1);
+    row.querySelector('.sz').textContent = (+a[1]).toFixed(3);
+    row.querySelector('.bar').style.width = (+a[1] / maxSz * 100) + '%';
+  }
+  const br = bookBidEl.children;
+  for (let i = 0; i < BOOK_ROWS; i++) {
+    const b = bids[i], row = br[i];   // 위=최고가(mid에 가까움)
+    if (!b) { row.style.visibility = 'hidden'; continue; }
+    row.style.visibility = ''; row.querySelector('.px').textContent = (+b[0]).toFixed(1);
+    row.querySelector('.sz').textContent = (+b[1]).toFixed(3);
+    row.querySelector('.bar').style.width = (+b[1] / maxSz * 100) + '%';
+  }
+  const mid = (+asks[0][0] + +bids[0][0]) / 2, spread = (+asks[0][0] - +bids[0][0]);
+  $('bookMidPx').textContent = fmt(mid, 1);
+  $('bookSpread').textContent = '스프레드 ' + spread.toFixed(1);
+}
+function bookBreak(rowEl, usd) {
+  if (!rowEl || rowEl.style.visibility === 'hidden') return;
+  rowEl.classList.remove('break'); void rowEl.offsetWidth; rowEl.classList.add('break');
+  const panel = $('bookPanel'), pr = panel.getBoundingClientRect(), rect = rowEl.getBoundingClientRect();
+  const n = Math.min(12, 4 + Math.floor(usd / 40000));
+  const isAsk = rowEl.classList.contains('ask');
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div'); s.className = 'shard';
+    s.style.background = isAsk ? '#f87171' : '#4ade80';
+    s.style.left = (rect.left - pr.left + rect.width * (0.3 + Math.random() * 0.5)) + 'px';
+    s.style.top = (rect.top - pr.top + 6) + 'px';
+    panel.appendChild(s);
+    const ang = Math.random() * Math.PI * 2, d = 14 + Math.random() * 34;
+    requestAnimationFrame(() => {
+      s.style.transition = 'transform .5s ease-out, opacity .5s ease-out';
+      s.style.transform = `translate(${Math.cos(ang) * d}px, ${Math.sin(ang) * d + 8}px) rotate(${Math.random()*180|0}deg)`;
+      s.style.opacity = '0';
+    });
+    setTimeout(() => s.remove(), 540);
+  }
+}
+function bookHit(usd, isBuy) {
+  // 시장가 매수 → 매도벽(ask) 최저가부터 / 매도 → 매수벽(bid) 최고가부터 소비
+  const rows = isBuy ? [...bookAskEl.children].reverse() : [...bookBidEl.children];
+  const hitN = usd >= 250000 ? 3 : usd >= 60000 ? 2 : 1;
+  let done = 0;
+  for (const row of rows) { if (row.style.visibility === 'hidden') continue; bookBreak(row, usd); if (++done >= hitN) break; }
+}
+
+const ws = new WebSocket('wss://stream.binance.com:9443/stream?streams=btcusdt@aggTrade/btcusdt@kline_1m/btcusdt@depth20@100ms');
 ws.onmessage = ev => {
   const { stream, data } = JSON.parse(ev.data);
   if (stream.endsWith('aggTrade')) {
@@ -1434,10 +1528,13 @@ ws.onmessage = ev => {
       $('liveChg').className = 'num ' + (chg>=0?'up':'dn');
     }
     spawnDrop(val, isBuy);
+    bookHit(val, isBuy);
     checkBreakout(px);
     if (isBuy) buyVol += val; else sellVol += val;
     if (val >= 500000) say('sys', '', `🐳 ${isBuy?'매수':'매도'} <b class="num ${isBuy?'up':'dn'}">$${fmt(val/1000)}K</b> — 큰손 등장`);
     updateKimchi();
+  } else if (stream.endsWith('depth20@100ms')) {
+    bookAsks = data.asks; bookBids = data.bids; renderBook();
   } else if (stream === 'btcusdt@kline_1m') {
     // 이펙트·베팅 판정은 항상 BTC 1분 기준 (차트 표시는 wsChart가 담당)
     if (data.k.x) onCandleClose(data.k);
