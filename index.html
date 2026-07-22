@@ -644,6 +644,7 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
   $('tab-arena').classList.toggle('hidden', t.dataset.tab !== 'arena');
   if (t.dataset.tab === 'game') blindOpen();
   if (t.dataset.tab === 'arena') arenaOpen();
+  if (t.dataset.tab === 'lounge') requestAnimationFrame(trimDeck);   // 복귀 시 실제 폭으로 덱 재정렬
   if (typeof syncChat === 'function') syncChat();   // 라운지 이탈/복귀 시 채팅 회선 정리
 });
 
@@ -1323,7 +1324,9 @@ let bkUpCool = 0, bkDnCool = 0;
 const deck = $('deck');
 function trimDeck() {
   // 패널 폭에 들어가는 만큼만 유지 (카드 76 + 간격 8)
-  const fit = Math.max(4, Math.floor((deck.clientWidth - 28 + 8) / 84));
+  // 숨김 탭이면 clientWidth=0 → 잘못된 최솟값으로 줄어드는 것 방지 (넉넉히 20 유지, 복귀 시 재정렬)
+  const w = deck.clientWidth;
+  const fit = w ? Math.max(4, Math.floor((w - 28 + 8) / 84)) : 20;
   while (deck.children.length > fit) deck.removeChild(deck.firstChild);
 }
 window.addEventListener('resize', trimDeck);
