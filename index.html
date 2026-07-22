@@ -1021,9 +1021,23 @@ function say(cls, who, body) {
   while (feed.children.length > 60) feed.removeChild(feed.firstChild);
   feed.scrollTop = feed.scrollHeight;
 }
-setTimeout(()=>say('madam','鄭마담','비트는 잠시 내려놓고 금괴로 갈아탄 상태야. 추세 돌아서면 바로 움직인다.'), 1200);
-setTimeout(()=>say('justin','Prof. Justin','이달 모형의 판정은 "진입 허용"입니다. 예보일 뿐, 우산은 각자 챙기시길.'), 3400);
-setTimeout(()=>say('andy','Andy','어제 스캔 27 hits. TRX 전적(10전 8승)이 눈에 띈다. 저녁 전보에서 계속.'), 5600);
+// 전략가 서신 — 서버가 매일 reports/letters.json에 갱신 (실패 시 폴백)
+const CHAR_NAME = { madam: '鄭마담', andy: 'Andy', justin: 'Prof. Justin' };
+const LETTER_FALLBACK = [
+  { cls:'madam', body:'판은 늘 돌아가고 있어. 자세한 소식은 장부에 적어뒀으니 열어봐.' },
+  { cls:'andy',  body:'그물은 매일 밤 걷는다. 오늘 명단은 저녁 전보에서.' },
+  { cls:'justin', body:'이달 소견서는 연구실에 걸어뒀습니다. 판단은 모형이, 결정은 사람이.' },
+];
+async function loadLetters() {
+  let list = null;
+  try {
+    const r = await fetch('reports/letters.json?t=' + Date.now());
+    if (r.ok) { const j = await r.json(); if (j && j.messages && j.messages.length) list = j.messages; }
+  } catch(e) {}
+  if (!list) list = LETTER_FALLBACK;
+  list.forEach((m, i) => setTimeout(() => say(m.cls, CHAR_NAME[m.cls] || '', m.body), 1200 + i * 2200));
+}
+loadLetters();
 
 // ═══ 다음 캔들 예측 ═══
 let bet = JSON.parse(localStorage.getItem('salonBet') || '{"streak":0,"best":0,"w":0,"l":0}');
